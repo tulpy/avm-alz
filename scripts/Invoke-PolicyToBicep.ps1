@@ -44,21 +44,31 @@ Specifies the filename for policy assignments output. Default is "_policyAssignm
 param (
   [Parameter()]
   [string]
-  $rootPath = "",
+  $rootPath = "../src",
   [string]
   $lineEnding = "unix",
+
   [string]
-  $policyDefinitionsPath = "lib/policy_definitions",
+  $policyDefinitionsPath = "/lib/policy_definitions",
   [string]
-  $policyDefinitionsTxtFileName = "_policyDefinitionsBicepInput.txt",
+  $policySetDefinitionsPath = "/lib/policy_set_definitions",
+  [string]
+  $roleDefinitionsPath = "/lib/role_definitions",
+
   [string]
   $policyDefinitionsLongPath = "$policyDefinitionsPath",
   [string]
-  $roleDefinitionsPath = "lib/role_definitions",
+  $policySetDefinitionsLongPath = "$policySetDefinitionsPath",
   [string]
-  $roleDefinitionsTxtFileName = "_roleDefinitionsBicepInput.txt",
+  $roleDefinitionsLongPath = "$roleDefinitionsPath",
+
+
   [string]
-  $roleDefinitionsLongPath = "$roleDefinitionsPath"
+  $policyDefinitionsTxtFileName = "_policyDefinitionsBicepInput.txt",
+  [string]
+  $policySetDefinitionsTxtFileName = "_policySetDefinitionsBicepInput.txt",
+  [string]
+  $roleDefinitionsTxtFileName = "_roleDefinitionsBicepInput.txt"
 )
 
 # This script relies on a custom set of classes and functions
@@ -96,25 +106,53 @@ function New-PolicyDefinitionsBicepInputTxtFile {
   param()
 
   Write-Information "====> Creating/Emptying '$policyDefinitionsTxtFileName'" -InformationAction Continue
-  Set-Content -Path "$policyDefinitionsLongPath/$policyDefinitionsTxtFileName" -Value $null -Encoding "utf8"
+  Set-Content -Path "$rootPath/$policyDefinitionsLongPath/$policyDefinitionsTxtFileName" -Value $null -Encoding "utf8"
 
   Write-Information "====> Looping Through Policy Definitions:" -InformationAction Continue
-  Get-ChildItem -Recurse -Path "$policyDefinitionsLongPath" -Filter "*.json" | ForEach-Object {
+  Get-ChildItem -Recurse -Path "$rootPath/$policyDefinitionsLongPath" -Filter "*.json" | ForEach-Object {
     $policyDef = Get-Content $_.FullName | ConvertFrom-Json -Depth 100
 
     $policyDefinitionName = $policyDef.name
     $fileName = $_.Name
 
     Write-Information "==> Adding '$policyDefinitionName' to '$PWD/$policyDefinitionsTxtFileName'" -InformationAction Continue
-    Add-Content -Path "$policyDefinitionsLongPath/$policyDefinitionsTxtFileName" -Encoding "utf8" -Value "`tloadJsonContent('$policyDefinitionsPath/$fileName')"
+    Add-Content -Path "$rootPath/$policyDefinitionsLongPath/$policyDefinitionsTxtFileName" -Encoding "utf8" -Value "`tloadJsonContent('..$policyDefinitionsPath/$fileName')"
   }
 
   Write-Information "====> Running '$policyDefinitionsTxtFileName' through Line Endings" -InformationAction Continue
-  Update-FileLineEndingType -filePath "$policyDefinitionsLongPath/$policyDefinitionsTxtFileName"
+  Update-FileLineEndingType -filePath "$rootPath/$policyDefinitionsLongPath/$policyDefinitionsTxtFileName"
 
-  $policyDefCount = Get-ChildItem -Recurse -Path "$policyDefinitionsLongPath" -Filter "*.json" | Measure-Object
+  $policyDefCount = Get-ChildItem -Recurse -Path "$rootPath/$policyDefinitionsLongPath" -Filter "*.json" | Measure-Object
   $policyDefCountString = $policyDefCount.Count
   Write-Information "====> Policy Definitions Total: $policyDefCountString" -InformationAction Continue
+}
+#endregion
+
+#region Policy Set Definitions
+function New-PolicySetDefinitionsBicepInputTxtFile {
+  [CmdletBinding(SupportsShouldProcess)]
+  param()
+
+  Write-Information "====> Creating/Emptying '$policySetDefinitionsTxtFileName'" -InformationAction Continue
+  Set-Content -Path "$rootPath/$policySetDefinitionsLongPath/$policySetDefinitionsTxtFileName" -Value $null -Encoding "utf8"
+
+  Write-Information "====> Looping Through Policy Set/Initiative Definition:" -InformationAction Continue
+  Get-ChildItem -Recurse -Path "$rootPath/$policySetDefinitionsLongPath" -Filter "*.json" | ForEach-Object {
+    $policySetDef = Get-Content $_.FullName | ConvertFrom-Json -Depth 100
+
+    $policySetDefinitionName = $policySetDef.name
+    $fileName = $_.Name
+
+    Write-Information "==> Adding '$policySetDefinitionName' to '$PWD/$policySetDefinitionsTxtFileName'" -InformationAction Continue
+    Add-Content -Path "$rootPath/$policySetDefinitionsLongPath/$policySetDefinitionsTxtFileName" -Encoding "utf8" -Value "`tloadJsonContent('..$policySetDefinitionsPath/$fileName')"
+  }
+
+  Write-Information "====> Running '$policySetDefinitionsTxtFileName' through Line Endings" -InformationAction Continue
+  Update-FileLineEndingType -filePath "$rootPath/$policySetDefinitionsLongPath/$policySetDefinitionsTxtFileName"
+
+  $policySetDefCount = Get-ChildItem -Recurse -Path "$rootPath/$policySetDefinitionsLongPath" -Filter "*.json" | Measure-Object
+  $policySetDefCountString = $policySetDefCount.Count
+  Write-Information "====> Policy SetDefinitions Total: $policySetDefCountString" -InformationAction Continue
 }
 #endregion
 
@@ -124,27 +162,28 @@ function New-RoleDefinitionsBicepInputTxtFile {
   param()
 
   Write-Information "====> Creating/Emptying '$roleDefinitionsTxtFileName'" -InformationAction Continue
-  Set-Content -Path "$roleDefinitionsLongPath/$roleDefinitionsTxtFileName" -Value $null -Encoding "utf8"
+  Set-Content -Path "$rootPath/$roleDefinitionsLongPath/$roleDefinitionsTxtFileName" -Value $null -Encoding "utf8"
 
   Write-Information "====> Looping Through Role Definitions:" -InformationAction Continue
-  Get-ChildItem -Recurse -Path "$roleDefinitionsLongPath" -Filter "*.json" | ForEach-Object {
+  Get-ChildItem -Recurse -Path "$rootPath/$roleDefinitionsLongPath" -Filter "*.json" | ForEach-Object {
     $roleDef = Get-Content $_.FullName | ConvertFrom-Json -Depth 100
 
     $roleDefinitionName = $roleDef.name
     $fileName = $_.Name
 
     Write-Information "==> Adding '$roleDefinitionName' to '$PWD/$roleDefinitionsTxtFileName'" -InformationAction Continue
-    Add-Content -Path "$roleDefinitionsLongPath/$roleDefinitionsTxtFileName" -Encoding "utf8" -Value "`tloadJsonContent('$roleDefinitionsPath/$fileName')"
+    Add-Content -Path "$rootPath/$roleDefinitionsLongPath/$roleDefinitionsTxtFileName" -Encoding "utf8" -Value "`tloadJsonContent('..$roleDefinitionsPath/$fileName')"
   }
 
   Write-Information "====> Running '$roleDefinitionsTxtFileName' through Line Endings" -InformationAction Continue
-  Update-FileLineEndingType -filePath "$roleDefinitionsLongPath/$roleDefinitionsTxtFileName"
+  Update-FileLineEndingType -filePath "$rootPath/$roleDefinitionsLongPath/$roleDefinitionsTxtFileName"
 
-  $roleDefCount = Get-ChildItem -Recurse -Path "$roleDefinitionsLongPath" -Filter "*.json" | Measure-Object
+  $roleDefCount = Get-ChildItem -Recurse -Path "$rootPath/$roleDefinitionsLongPath" -Filter "*.json" | Measure-Object
   $roleDefCountString = $roleDefCount.Count
   Write-Information "====> Policy Definitions Total: $roleDefCountString" -InformationAction Continue
 }
 #endregion
 
 New-PolicyDefinitionsBicepInputTxtFile
+New-PolicySetDefinitionsBicepInputTxtFile
 New-RoleDefinitionsBicepInputTxtFile

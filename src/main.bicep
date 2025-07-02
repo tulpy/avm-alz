@@ -5,14 +5,64 @@ metadata description = 'Module used to bootstrap an Azure Landing Zone.'
 metadata version = '0.0.1'
 metadata author = 'Insight APAC Platform Engineering'
 
-@description('Required. The name of the management group to create or update.')
-param managementGroupNames object
+@description('Required. A short Management Group identifier for the kind of deployment.')
+param mgId string
 
-@description('Required. JSON files containing the custom RBAC role definitions.')
-param alzCustomRbacRoleDefsJson array
+@description('Optional. JSON files containing the custom RBAC role definitions.')
+param alzCustomRbacRoleDefsJson array = []
+
+@description('Optional. JSON files containing the custom policy definitions.')
+param alzCustomPolicyDefsJson array = []
+
+@description('Optional. JSON files containing the custom policy definitions.')
+param alzCustomPolicySetDefsJson array = []
 
 @description('Optional. The name of the management group to create or update.')
 param createOrUpdateManagementGroup bool = true
+
+// Management Group Structure
+var managementGroupNames = {
+  intRoot: {
+    displayName: 'AVM ALZ Management Group'
+    id: mgId
+  }
+  decommissioned: {
+    displayName: 'Decommissioned'
+    id: '${mgId}-decommissioned'
+  }
+  sandbox: {
+    displayName: 'Sandbox'
+    id: '${mgId}-sandbox'
+  }
+  platform: {
+    displayName: 'Platform'
+    id: '${mgId}-platform'
+  }
+  connectivity: {
+    displayName: 'Connectivity'
+    id: '${mgId}-platform-connectivity'
+  }
+  management: {
+    displayName: 'Management'
+    id: '${mgId}-platform-management'
+  }
+  identity: {
+    displayName: 'Identity'
+    id: '${mgId}-platform-identity'
+  }
+  landingZones: {
+    displayName: 'Landing Zones'
+    id: '${mgId}-landingzones'
+  }
+  corp: {
+    displayName: 'Corp'
+    id: '${mgId}-lz-corp'
+  }
+  online: {
+    displayName: 'Online'
+    id: '${mgId}-lz-online'
+  }
+}
 
 // Custom Role Definitions
 var alzCustomRbacRoleDefsJsonParsed = [
@@ -26,7 +76,22 @@ var alzCustomRbacRoleDefsJsonParsed = [
     notDataActions: roleDef.properties.permissions[0].notDataActions
   }
 ]
-var additionalCustomRbacRoleDefs = []
+var additionalCustomRbacRoleDefs = [
+  {
+    name: '[${managementGroup().name}] VM Operator'
+    description: 'Start and Stop Virtual Machines and reader access'
+    actions: [
+      'Microsoft.Compute/virtualMachines/read'
+      'Microsoft.Compute/virtualMachines/start/action'
+      'Microsoft.Compute/virtualMachines/restart/action'
+      'Microsoft.Resources/subscriptions/resourceGroups/read'
+      'Microsoft.Compute/virtualMachines/deallocate/action'
+      'Microsoft.Compute/virtualMachineScaleSets/deallocate/action'
+      'Microsoft.Compute/virtualMachineScaleSets/virtualMachines/deallocate/action'
+      'Microsoft.Compute/virtualMachines/powerOff/action'
+    ]
+  }
+]
 var unionedCustomRbacRoleDefs = union(alzCustomRbacRoleDefsJsonParsed, additionalCustomRbacRoleDefs)
 
 // Role Assignments
@@ -49,6 +114,37 @@ var managementGroupRoleAssignments = [
   }
 ]
 
+// Policy Definitions, Initiatives and Assignments
+var managementGroupCustomPolicyDefinitions = [
+  for policy in alzCustomPolicyDefsJson: {
+    name: policy.name
+    properties: {
+      description: policy.properties.description
+      displayName: policy.properties.displayName
+      metadata: policy.properties.metadata
+      mode: policy.properties.mode
+      parameters: policy.properties.parameters
+      policyType: policy.properties.policyType
+      policyRule: policy.properties.policyRule
+    }
+  }
+]
+
+var managementGroupCustomPolicySetDefinitions = [
+  for policy in alzCustomPolicySetDefsJson: {
+    name: policy.name
+    properties: {
+      description: policy.properties.description
+      displayName: policy.properties.displayName
+      metadata: policy.properties.metadata
+      parameters: policy.properties.parameters
+      policyType: policy.properties.policyType
+      version: policy.properties.?version
+      policyDefinitions: policy.properties.policyDefinitions
+    }
+  }
+]
+
 @description('Module: Int Root Management Group - https://github.com/Azure/bicep-registry-modules/tree/main/avm/ptn/alz/empty')
 module intRoot 'br/public:avm/ptn/alz/empty:0.2.0' = {
   name: take('intRoot-${guid(deployment().name)}', 64)
@@ -60,6 +156,8 @@ module intRoot 'br/public:avm/ptn/alz/empty:0.2.0' = {
     managementGroupCustomRoleDefinitions: unionedCustomRbacRoleDefs
     managementGroupDisplayName: managementGroupNames.intRoot.displayName
     managementGroupRoleAssignments: managementGroupRoleAssignments
+    managementGroupCustomPolicyDefinitions: managementGroupCustomPolicyDefinitions
+    managementGroupCustomPolicySetDefinitions: managementGroupCustomPolicySetDefinitions
   }
 }
 

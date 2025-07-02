@@ -158,6 +158,24 @@ module intRoot 'br/public:avm/ptn/alz/empty:0.2.0' = {
     managementGroupRoleAssignments: managementGroupRoleAssignments
     managementGroupCustomPolicyDefinitions: managementGroupCustomPolicyDefinitions
     managementGroupCustomPolicySetDefinitions: managementGroupCustomPolicySetDefinitions
+    managementGroupPolicyAssignments: [
+      {
+        name: 'allowed-locations'
+        displayName: 'Allowed locations for resources - AVM'
+        identity: 'None'
+        enforcementMode: 'Default'
+        policyDefinitionId: '/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c'
+        definitionVersion: '1.*.*'
+        parameters: {
+          listOfAllowedLocations: {
+            value: [
+              'australiaeast'
+              'global'
+            ]
+          }
+        }
+      }
+    ]
   }
 }
 

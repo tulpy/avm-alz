@@ -16,3 +16,4 @@ param alzCustomPolicyDefsJson = [
 param alzCustomPolicySetDefsJson = [
   loadJsonContent('../lib/policy_set_definitions/Audit-TrustedLaunch.alz_policy_set_definition.json')
 ]
+

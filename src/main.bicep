@@ -1,6 +1,6 @@
 targetScope = 'managementGroup'
 
-metadata name = 'AVM ALZ MAnagement Groups & Custom RBAC Roles'
+metadata name = 'AVM ALZ Management Groups & Custom RBAC Roles'
 metadata description = 'Module used to bootstrap an Azure Landing Zone.'
 metadata version = '0.0.1'
 metadata author = 'Insight APAC Platform Engineering'

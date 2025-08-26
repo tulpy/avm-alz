@@ -1,0 +1,7 @@
+{
+    "github.copilot.enable": {
+        "markdown": true
+    },
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.edits.temporalContext.enabled": true
+}

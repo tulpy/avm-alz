@@ -98,12 +98,13 @@ var commonResourceGroupNames = [
 ]
 
 @export()
-var customNames = {
-  networkRg: ''
-  virtualNetwork: ''
-  actionGroup: ''
-  actionGroupShort: ''
-}
+var serviceHealthAlerts = [
+  'Resource Health Unhealthy'
+  'Service Health Advisory'
+  'Service Health Incident'
+  'Service Health Maintenance'
+  'Service Health Security'
+]
 
 @export()
 var sharedNSGrulesInbound = [

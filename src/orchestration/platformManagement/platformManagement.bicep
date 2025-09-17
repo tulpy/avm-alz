@@ -29,40 +29,43 @@ param tags type.tagsType?
 @description('Optional. Configuration for Log Analytics.')
 param logAnalyticsConfiguration type.logAnalyticsType?
 
+@description('Optional. Configuration for Azure Storage Account.')
+param storageAccountConfiguration type.storageAccountType?
+
 // Subscription Budget Module Parameters
+@description('Optional. Deployment flag for Azure Budgets.')
+param deployBudgets bool = true
+
 @description('Optional. Configuration for Azure Budgets.')
-param budgetConfiguration type.budgetConfigurationType?
+param budgetConfiguration type.budgetType?
 
 @description('Optional. Date timestamp.')
 param startDate string = '${utcNow('yyyy')}-${utcNow('MM')}-01T00:00:00Z'
 
 // Action Group Module Parameters
 @description('Optional. Configuration for Action Groups.')
-param actionGroupConfiguration type.actionGroupConfigurationType?
+param actionGroupConfiguration type.actionGroupConfigurationType
 
 // Orchestration Variables
-var argPrefix = toLower('${shared.resPrefixes.resourceGroup}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}${shared.delimiter.dash}')
-var lawPrefix = toLower('${shared.resPrefixes.logAnalytics}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}${shared.delimiter.dash}')
-var aaaPrefix = toLower('${shared.resPrefixes.azureAutomation}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}${shared.delimiter.dash}')
-//var staPrefix = toLower('${shared.resPrefixes.storage}${shared.locPrefixes[location]}${lzPrefix}${envPrefix}')
-//var vntPrefix = toLower('${shared.resPrefixes.virtualNetwork}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}-')
-//var nsgPrefix = toLower('${shared.resPrefixes.networkSecurityGroup}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}-')
-//var udrPrefix = toLower('${shared.resPrefixes.routeTable}-${shared.locPrefixes[location]}-${lzPrefix}-${envPrefix}-')
+var argPrefix = toLower('${shared.resPrefixes.resourceGroup}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
+var lawPrefix = toLower('${shared.resPrefixes.logAnalytics}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
+var aaaPrefix = toLower('${shared.resPrefixes.azureAutomation}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
+var staPrefix = toLower('${shared.resPrefixes.storage}${shared.locPrefixes[location]}${lzPrefix}${envPrefix}')
 var dcrPrefix = toLower('${shared.resPrefixes.dataCollectionRule}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
 var uaiPrefix = toLower('${shared.resPrefixes.userAssignedIdentity}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
 var umPrefix = toLower('${shared.resPrefixes.updateManagement}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
 var akvPrefix = toLower('${shared.resPrefixes.keyVault}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
-var deployBudgets = budgetConfiguration.?enabled ?? true
 
 var resourceGroups = {
   network: '${argPrefix}network'
   logging: '${argPrefix}logging'
+  updateManagement: '${argPrefix}updatemgmt'
 }
 
 var resourceNames = {
   logAnalyticsWorkspace: logAnalyticsConfiguration.?name ?? '${lawPrefix}${uniqueString(subscriptionId)}'
   azureAutomation: '${aaaPrefix}${uniqueString(subscriptionId)}'
-  //storageAccount: storageAccountConfiguration.?name ?? take('${staPrefix}${uniqueString(subscriptionId)}', 24)
+  storageAccount: storageAccountConfiguration.?name ?? take('${staPrefix}${uniqueString(subscriptionId)}', 24)
   dcrVMInsights: '${dcrPrefix}vminsights'
   dcrCT: '${dcrPrefix}changetracking'
   dcrMDFCSQL: '${dcrPrefix}mdfcsql'
@@ -136,6 +139,59 @@ module workspace 'br/public:avm/res/operational-insights/workspace:0.12.0' = {
   }
 }
 
+@description('Module: Azure Automation Account - https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/automation/automation-account')
+module automationAccount 'br/public:avm/res/automation/automation-account:0.16.1' = {
+  scope: resourceGroup('${resourceGroups.logging}')
+  name: take('automationAccount-${guid(deployment().name)}', 64)
+  params: {
+    // Required parameters
+    name: resourceNames.azureAutomation
+    // Non-required parameters
+    disableLocalAuth: true
+    managedIdentities: {
+      systemAssigned: true
+    }
+    tags: tags
+  }
+}
+
+@description('Module: Storage Account - https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/storage/storage-account')
+module storageAccount 'br/public:avm/res/storage/storage-account:0.26.2' = {
+  scope: resourceGroup('${resourceGroups.logging}')
+  name: take('storageAccount-${guid(deployment().name)}', 64)
+  params: {
+    // Required parameters
+    name: resourceNames.storageAccount
+    // Non-required parameters
+    accessTier: storageAccountConfiguration.?accessTier ?? 'Hot'
+    allowBlobPublicAccess: storageAccountConfiguration.?allowBlobPublicAccess ?? false
+    allowSharedKeyAccess: storageAccountConfiguration.?allowSharedKeyAccess ?? false
+    blobServices: {
+      containerDeleteRetentionPolicyDays: storageAccountConfiguration.?containerDeleteRetentionPolicyDays ?? 7
+      containerDeleteRetentionPolicyEnabled: storageAccountConfiguration.?containerDeleteRetentionPolicyEnabled ?? true
+      deleteRetentionPolicyDays: storageAccountConfiguration.?deleteRetentionPolicyDays ?? 7
+      deleteRetentionPolicyEnabled: storageAccountConfiguration.?deleteRetentionPolicyEnabled ?? true
+    }
+    defaultToOAuthAuthentication: !(storageAccountConfiguration.?allowSharedKeyAccess ?? true)
+    managedIdentities: {
+      systemAssigned: true
+    }
+    kind: storageAccountConfiguration.?kind ?? 'StorageV2'
+    location: location
+    minimumTlsVersion: storageAccountConfiguration.?minimumTlsVersion ?? 'TLS1_2'
+    networkAcls: storageAccountConfiguration.?networkAcls ?? {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
+    }
+    publicNetworkAccess: storageAccountConfiguration.?publicNetworkAccess ?? 'Enabled'
+    skuName: storageAccountConfiguration.?skuName ?? 'Standard_ZRS'
+    supportsHttpsTrafficOnly: storageAccountConfiguration.?supportsHttpsTrafficOnly ?? true
+    tags: tags
+  }
+}
+
 @description('Module: Azure Monitor Agent - https://github.com/Azure/bicep-registry-modules/tree/main/avm/ptn/alz/ama')
 module ama 'br/public:avm/ptn/alz/ama:0.1.0' = {
   name: take('ama-${guid(deployment().name)}', 64)
@@ -202,7 +258,7 @@ module networkWatcher 'br/public:avm/res/network/network-watcher:0.4.1' = {
 }
 
 @description('Module: Action Group - https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/insights/action-group')
-module actionGroup 'br/public:avm/res/insights/action-group:0.7.0' = if (!empty(actionGroupConfiguration.?emailReceivers)) {
+module actionGroup 'br/public:avm/res/insights/action-group:0.8.0' = if (!empty(actionGroupConfiguration.?emailReceivers)) {
   name: take('actionGroup-${guid(deployment().name)}', 64)
   scope: resourceGroup(subscriptionId, 'alertsRG')
   dependsOn: [
@@ -221,5 +277,79 @@ module actionGroup 'br/public:avm/res/insights/action-group:0.7.0' = if (!empty(
       }
     ]
     location: 'Global'
+  }
+}
+
+@description('Module: Service Health Alerts - https://github.com/Azure/bicep-registry-modules/tree/main/avm/ptn/subscription/service-health-alerts')
+module serviceHealthAlerts 'br/public:avm/ptn/subscription/service-health-alerts:0.1.1' = {
+  name: take('serviceHealthAlerts-${guid(deployment().name)}', 64)
+  params: {
+    location: location
+    serviceHealthAlerts: [
+      for alert in shared.serviceHealthAlerts: {
+        actionGroup: {
+          enabled: true
+          existingActionGroupResourceId: actionGroup.?outputs.resourceId ?? ''
+        }
+        serviceHealthAlert: alert
+      }
+    ]
+    serviceHealthAlertsResourceGroupName: 'alertsRG'
+    subscriptionId: subscriptionId
+  }
+}
+
+@description('Module: Resource Group (Update Management)')
+module resourceGroupForUpdateManagement 'br/public:avm/res/resources/resource-group:0.4.1' = {
+  scope: subscription(subscriptionId)
+  name: take('resourceGroupForUpdateManagement-${guid(deployment().name)}', 64)
+  params: {
+    // Required parameters
+    name: resourceGroups.updateManagement
+    // Non-required parameters
+    location: location
+    tags: tags
+  }
+}
+
+module maintenanceConfiguration 'br/public:avm/res/maintenance/maintenance-configuration:0.3.1' = {
+  scope: resourceGroup(subscriptionId, resourceGroups.updateManagement)
+  name: take('maintenanceConfiguration-${guid(deployment().name)}', 64)
+  params: {
+    // Required parameters
+    name: resourceNames.updateManagerConfiguration
+    // Non-required parameters
+    extensionProperties: {
+      InGuestPatchMode: 'User'
+    }
+    installPatches: {
+      linuxParameters: {
+        classificationsToInclude: [
+          'Critical'
+          'Security'
+        ]
+        packageNameMasksToExclude: null
+        packageNameMasksToInclude: null
+      }
+      windowsParameters: {
+        classificationsToInclude: [
+          'Critical'
+          'Security'
+        ]
+        kbNumbersToExclude: null
+        kbNumbersToInclude: null
+      }
+      rebootSetting: rebootSetting
+    }
+    location: location
+    maintenanceScope: 'InGuestPatch'
+    maintenanceWindow: {
+      duration: '03:00'
+      expirationDateTime: '9999-12-31 23:59:59'
+      recurEvery: 'Day'
+      startDateTime: '2022-12-31 13:00'
+      timeZone: 'W. Europe Standard Time'
+    }
+    tags: tags
   }
 }

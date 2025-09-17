@@ -340,42 +340,35 @@ type actionGroupConfigurationType = {
   emailReceivers: array?
 }
 
-@export()
-@description('The type for Azure Budget configuration.')
-type budgetConfigurationType = {
-  @description('Optional. Deployment flag for Azure Budgets.')
-  enabled: bool?
-
-  @description('Optional. Budget  Type.')
-  budgets: budgetType[]?
-}
-
+// Azure Budget Type
 @export()
 @description('The type for Azure Budgets')
 type budgetType = {
-  @minLength(1)
-  @maxLength(63)
-  @description('Required. The name of the budget.')
-  name: string
+  budgets: {
+    @minLength(1)
+    @maxLength(63)
+    @description('Required. The name of the budget.')
+    name: string
 
-  @description('Optional. The category of the budget, whether the budget tracks cost or usage.')
-  category: 'Cost' | 'Usage'?
+    @description('Optional. The category of the budget, whether the budget tracks cost or usage.')
+    category: ('Cost' | 'Usage')?
 
-  @description('Required. The total amount of cost or usage to track with the budget.')
-  amount: int
+    @description('Optional. The start date for the budget. Start date should be the first day of the month and cannot be in the past (except for the current month).')
+    startDate: string?
 
-  @description('Optional. The start date for the budget. Start date should be the first day of the month and cannot be in the past (except for the current month).')
-  startDate: string?
+    @description('Required. The total amount of cost or usage to track with the budget.')
+    amount: int
 
-  @description('Optional. The type of threshold to use for the budget. The threshold type can be either `Actual` or `Forecasted`.')
-  thresholdType: 'Actual' | 'Forecasted'?
+    @description('Optional. The type of threshold to use for the budget. The threshold type can be either `Actual` or `Forecasted`.')
+    thresholdType: ('Actual' | 'Forecasted')?
 
-  @maxLength(5)
-  @description('Optional. Percent thresholds of budget for when to get a notification. Can be up to 5 thresholds, where each must be between 1 and 1000.')
-  thresholds: array?
+    @maxLength(5)
+    @description('Optional. Percent thresholds of budget for when to get a notification. Can be up to 5 thresholds, where each must be between 1 and 1000.')
+    thresholds: array?
 
-  @description('Conditional. The list of email addresses to send the budget notification to when the thresholds are exceeded. Required if neither `contactRoles` nor `actionGroups` was provided.')
-  contactEmails: array?
+    @description('Conditional. The list of email addresses to send the budget notification to when the thresholds are exceeded. Required if neither `contactRoles` nor `actionGroups` was provided.')
+    contactEmails: array?
+  }[]
 }
 
 // Role Permissions Types
@@ -437,4 +430,149 @@ type pimRoleAssignmentType = {
 
   @description('Optional. Random for the deployment name (true or false).')
   deploymentSeedRandom: bool?
+}
+
+import { publicIPAddressObjectType } from 'br/public:avm/res/network/bastion-host:0.8.0'
+@export()
+@description('The type for Azure Bastion Host.')
+type bastionHostType = {
+  @description('Required. Name of the Azure Bastion resource.')
+  name: string?
+
+  @description('Required. Shared services Virtual Network resource Id.')
+  virtualNetworkResourceId: string
+
+  @description('Optional. The Public IP resource ID to associate to the azureBastionSubnet. If empty, then the Public IP that is created as part of this module will be applied to the azureBastionSubnet. This parameter is ignored when enablePrivateOnlyBastion is true.')
+  bastionSubnetPublicIpResourceId: string?
+
+  @description('Optional. Specifies the properties of the Public IP to create and be used by Azure Bastion, if no existing public IP was provided. This parameter is ignored when enablePrivateOnlyBastion is true.')
+  publicIPAddressObject: publicIPAddressObjectType?
+
+  @description('Optional. The SKU of this Bastion Host.')
+  skuName: 'Basic' | 'Developer' | 'Premium' | 'Standard'?
+
+  @description('Optional. Choose to disable or enable Copy Paste. For Basic and Developer SKU Copy/Paste is always enabled.')
+  disableCopyPaste: bool?
+
+  @description('Optional. Choose to disable or enable File Copy. Not supported for Basic and Developer SKU.')
+  enableFileCopy: bool?
+
+  @description('Optional. Choose to disable or enable IP Connect. Not supported for Basic and Developer SKU.')
+  enableIpConnect: bool?
+
+  @description('Optional. Choose to disable or enable Kerberos authentication. Not supported for Developer SKU.')
+  enableKerberos: bool?
+
+  @description('Optional. Choose to disable or enable Shareable Link. Not supported for Basic and Developer SKU.')
+  enableShareableLink: bool?
+
+  @description('Optional. Choose to disable or enable Session Recording feature. The Premium SKU is required for this feature. If Session Recording is enabled, the Native client support will be disabled.')
+  enableSessionRecording: bool?
+
+  @description('Optional. Choose to disable or enable Private-only Bastion deployment. The Premium SKU is required for this feature.')
+  enablePrivateOnlyBastion: bool?
+
+  @description('Optional. The scale units for the Bastion Host resource. The Basic and Developer SKU only support 2 scale units.')
+  scaleUnits: int?
+
+  @description('Optional. The lock settings of the service.')
+  lock: commonTypes.lockType?
+
+  @description('Optional. Array of role assignments to create.')
+  roleAssignments: commonTypes.roleAssignmentType[]?
+
+  @description('Optional. Tags of the resource.')
+  tags: resourceInput<'Microsoft.Network/bastionHosts@2024-07-01'>.tags?
+
+  @description('Optional. The list of Availability zones to use for the zone-redundant resources.')
+  availabilityZones: int[]?
+}
+
+
+// Azure Storage Account Configuration Type
+import { networkAclsType } from 'br/public:avm/res/storage/storage-account:0.26.2'
+@export()
+@description('The type for Azure Storage Account configuration.')
+type storageAccountType = {
+  @description('Optional. Deployment flag for Azure Storage.')
+  enabled: bool?
+
+  @minLength(3)
+  @maxLength(24)
+  @description('Optional. The name of the storage account, Storage Account names must be globally unique.')
+  name: string?
+
+  @description('Optional. Storage account SKU. Defaults to \'Standard_ZRS\'.')
+  skuName:
+    | 'Standard_LRS'
+    | 'Standard_GRS'
+    | 'Standard_RAGRS'
+    | 'Standard_ZRS'?
+    | 'Premium_LRS'
+    | 'Premium_ZRS'
+    | 'Standard_GZRS'
+    | 'Standard_RAGZRS'
+
+  @description('Optional. Indicates whether the storage account permits requests to be authorized with the account access key via Shared Key. If false, then all requests, including shared access signatures, must be authorized with Microsoft Entra ID. Defaults to \'false\'.')
+  allowSharedKeyAccess: bool?
+
+  @description('Optional. Indicates whether public access is enabled for all blobs or containers in the storage account. For security reasons, it is recommended to set it to false.')
+  allowBlobPublicAccess: bool?
+
+  @description('Optional. A boolean flag which indicates whether the default authentication is OAuth or not.')
+  defaultToOAuthAuthentication: bool?
+
+  @description('Optional. Allow large file shares if sets to \'Enabled\'. It cannot be disabled once it is enabled. Only supported on locally redundant and zone redundant file shares. It cannot be set on FileStorage storage accounts (storage accounts for premium file shares).')
+  largeFileSharesState: 'Disabled' | 'Enabled'?
+
+  @description('Optional. Type of Storage Account to create.')
+  kind: ('StorageV2' | 'StorageV2' | 'BlobStorage' | 'FileStorage' | 'BlockBlobStorage')?
+
+  @description('Conditional. Required if the Storage Account kind is set to BlobStorage. The access tier is used for billing. The "Premium" access tier is the default value for premium block blobs storage account type and it cannot be changed for the premium block blobs storage account type.')
+  accessTier: ('Premium' | 'Hot' | 'Cool' | 'Cold')?
+
+  @description('Optional. Set the minimum TLS version on request to storage. The TLS versions 1.0 and 1.1 are deprecated and not supported anymore.')
+  minimumTlsVersion: 'TLS1_2'
+
+  @description('Optional. Whether or not public network access is allowed for this resource. For security reasons it should be disabled. If not specified, it will be disabled by default if private endpoints are set and networkAcls are not set.')
+  publicNetworkAccess: ('Enabled' | 'Disabled')
+
+  @description('Optional. Networks ACLs, this value contains IPs to whitelist and/or Subnet information. If in use, bypass needs to be supplied. For security reasons, it is recommended to set the DefaultAction Deny.')
+  networkAcls: networkAclsType?
+
+  @description('Optional. Allows HTTPS traffic only to storage service if sets to true.')
+  supportsHttpsTrafficOnly: bool?
+
+  @description('Optional. Indicates whether containerDeleteRetentionPolicyEnabled is enabled.')
+  containerDeleteRetentionPolicyEnabled: bool?
+
+  @minValue(1)
+  @maxValue(365)
+  @description('Optional. Indicates the number of days that the deleted item should be retained.')
+  containerDeleteRetentionPolicyDays: int?
+
+  @description('Optional. Indicates whether deleteRetentionPolicyEnabled is enabled.')
+  deleteRetentionPolicyEnabled: bool?
+
+  @minValue(1)
+  @maxValue(365)
+  @description('Optional. Indicates the number of days that the deleted blob should be retained.')
+  deleteRetentionPolicyDays: int?
+
+  @description('Optional. Indicates whether shareDeleteRetentionPolicy is enabled.')
+  shareDeleteRetentionPolicyEnabled: bool?
+
+  @minValue(1)
+  @maxValue(365)
+  @description('Optional. The service properties for soft delete.')
+  shareDeleteRetentionPolicyDays: int?
+
+  @description('Optional. Tags of the resource.')
+  tags: resourceInput<'Microsoft.Storage/storageAccounts@2024-01-01'>.tags?
+
+  @description('Optional. The lock settings of the service.')
+  lock: commonTypes.lockType?
+
+  @description('Optional. Array of role assignments to create.')
+  roleAssignments: commonTypes.roleAssignmentType[]?
 }

@@ -118,7 +118,7 @@ module actionGroup 'br/public:avm/res/insights/action-group:0.7.0' = if (!empty(
   }
 }
 
-module subVending 'br/public:avm/ptn/lz/sub-vending:0.3.5' = {
+module subVending 'br/public:avm/ptn/lz/sub-vending:0.3.7' = {
   name: 'subVendingDeployment'
   params: {
     deploymentScriptLocation: location

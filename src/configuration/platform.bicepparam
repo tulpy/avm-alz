@@ -1,4 +1,4 @@
-using '../main.bicep'
+using '../orchestration/platform/platform.bicep'
 
 param mgId = 'mg-alz'
 param alzCustomRbacRoleDefsJson = [

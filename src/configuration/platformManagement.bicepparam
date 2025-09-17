@@ -14,11 +14,11 @@ param tags = {
   iac: 'Bicep'
 }
 param budgetConfiguration = {
-  enabled: false
   budgets: [
     {
       name: 'budget-forecasted'
       amount: 500
+      startDate: '2025-12-01'
       thresholdType: 'Forecasted'
       thresholds: [
         90
@@ -31,6 +31,7 @@ param budgetConfiguration = {
     {
       name: 'budget-actual'
       amount: 500
+      startDate: '2025-12-01'
       thresholdType: 'Actual'
       thresholds: [
         95

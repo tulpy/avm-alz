@@ -1,12 +1,15 @@
 targetScope = 'managementGroup'
 
-metadata name = 'AVM ALZ Management Groups & Custom RBAC Roles'
-metadata description = 'Module used to bootstrap an Azure Landing Zone.'
+metadata name = 'ALZ AVM Management Groups & Platform Resources Orchestration'
+metadata description = 'Module used to bootstrap an Azure Landing Zone Platform.'
 metadata version = '0.0.2'
 metadata author = 'Insight APAC Platform Engineering'
 
-@description('Required. A short Management Group identifier for the kind of deployment.')
+@description('Required. The Int Root Management Group Id.')
 param mgId string
+
+@description('Required. The Int Root Management Group Display Name.')
+param mgDisplayName string
 
 @description('Optional. JSON files containing the custom RBAC role definitions.')
 param alzCustomRbacRoleDefsJson array = []
@@ -23,7 +26,7 @@ param createOrUpdateManagementGroup bool = true
 // Management Group Structure
 var managementGroupNames = {
   intRoot: {
-    displayName: 'AVM ALZ Management Group'
+    displayName: mgDisplayName
     id: mgId
   }
   decommissioned: {
@@ -38,19 +41,19 @@ var managementGroupNames = {
     displayName: 'Platform'
     id: '${mgId}-platform'
   }
-  connectivity: {
+  platformConnectivity: {
     displayName: 'Connectivity'
     id: '${mgId}-platform-connectivity'
   }
-  management: {
+  platformManagement: {
     displayName: 'Management'
     id: '${mgId}-platform-management'
   }
-  identity: {
+  platformIdentity: {
     displayName: 'Identity'
     id: '${mgId}-platform-identity'
   }
-  security: {
+  platformSecurity: {
     displayName: 'Security'
     id: '${mgId}-platform-security'
   }
@@ -80,43 +83,40 @@ var alzCustomRbacRoleDefsJsonParsed = [
     notDataActions: roleDef.properties.permissions[0].notDataActions
   }
 ]
-var additionalCustomRbacRoleDefs = [
-  {
-    name: '[${managementGroup().name}] VM Operator'
-    description: 'Start and Stop Virtual Machines and reader access'
-    actions: [
-      'Microsoft.Compute/virtualMachines/read'
-      'Microsoft.Compute/virtualMachines/start/action'
-      'Microsoft.Compute/virtualMachines/restart/action'
-      'Microsoft.Resources/subscriptions/resourceGroups/read'
-      'Microsoft.Compute/virtualMachines/deallocate/action'
-      'Microsoft.Compute/virtualMachineScaleSets/deallocate/action'
-      'Microsoft.Compute/virtualMachineScaleSets/virtualMachines/deallocate/action'
-      'Microsoft.Compute/virtualMachines/powerOff/action'
-    ]
-  }
-]
+var additionalCustomRbacRoleDefs = []
 var unionedCustomRbacRoleDefs = union(alzCustomRbacRoleDefsJsonParsed, additionalCustomRbacRoleDefs)
 
 // Role Assignments
-var managementGroupRoleAssignments = [
-  {
-    principalId: deployer().objectId
-    roleDefinitionIdOrName: 'Reader'
-  }
-  {
-    principalId: deployer().objectId
-    roleDefinitionIdOrName: 'Contributor'
-  }
-  {
-    principalId: deployer().objectId
-    roleDefinitionIdOrName: alzCustomRbacRoleDefsJson[1].name
-  }
-  {
-    principalId: deployer().objectId
-    roleDefinitionIdOrName: alzCustomRbacRoleDefsJson[3].name
-  }
-]
+var managementGroupRoleAssignments = {
+  intRoot: [
+    {
+      principalId: deployer().objectId
+      roleDefinitionIdOrName: 'Reader'
+    }
+    {
+      principalId: deployer().objectId
+      roleDefinitionIdOrName: 'Contributor'
+    }
+    {
+      principalId: deployer().objectId
+      roleDefinitionIdOrName: alzCustomRbacRoleDefsJson[1].name
+    }
+    {
+      principalId: deployer().objectId
+      roleDefinitionIdOrName: alzCustomRbacRoleDefsJson[3].name
+    }
+  ]
+  decommissioned: []
+  sandbox: []
+  platform: []
+  platformConnectivity: []
+  platformManagement: []
+  platformIdentity: []
+  platformSecurity: []
+  landingZones: []
+  lzCorp: []
+  lzOnline: []
+}
 
 // Policy Definitions, Initiatives and Assignments
 var managementGroupCustomPolicyDefinitions = [
@@ -159,27 +159,14 @@ module intRoot 'br/public:avm/ptn/alz/empty:0.3.1' = {
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupCustomRoleDefinitions: unionedCustomRbacRoleDefs
     managementGroupDisplayName: managementGroupNames.intRoot.displayName
-    managementGroupRoleAssignments: managementGroupRoleAssignments
-    managementGroupCustomPolicyDefinitions: managementGroupCustomPolicyDefinitions
-    managementGroupCustomPolicySetDefinitions: managementGroupCustomPolicySetDefinitions
-    managementGroupPolicyAssignments: [
-      {
-        name: 'allowed-locations'
-        displayName: 'Allowed locations for resources - AVM'
-        identity: 'None'
-        enforcementMode: 'Default'
-        policyDefinitionId: '/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c'
-        definitionVersion: '1.*.*'
-        parameters: {
-          listOfAllowedLocations: {
-            value: [
-              'australiaeast'
-              'global'
-            ]
-          }
-        }
-      }
-    ]
+    managementGroupRoleAssignments: managementGroupRoleAssignments.intRoot
+    managementGroupCustomPolicyDefinitions: !empty(managementGroupCustomPolicyDefinitions)
+      ? managementGroupCustomPolicyDefinitions
+      : null
+    managementGroupCustomPolicySetDefinitions: !empty(managementGroupCustomPolicySetDefinitions)
+      ? managementGroupCustomPolicySetDefinitions
+      : null
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -192,7 +179,9 @@ module decommissioned 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.decommissioned.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.decommissioned
     managementGroupParentId: intRoot.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -205,7 +194,9 @@ module sandbox 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.sandbox.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.sandbox
     managementGroupParentId: intRoot.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -218,7 +209,9 @@ module platform 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.platform.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.platform
     managementGroupParentId: intRoot.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -227,11 +220,13 @@ module platformManagement 'br/public:avm/ptn/alz/empty:0.3.1' = {
   name: take('platformManagement-${guid(deployment().name)}', 64)
   params: {
     // Required parameters
-    managementGroupName: managementGroupNames.management.id
+    managementGroupName: managementGroupNames.platformManagement.id
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
-    managementGroupDisplayName: managementGroupNames.management.displayName
+    managementGroupDisplayName: managementGroupNames.platformManagement.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.platformManagement
     managementGroupParentId: platform.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -240,11 +235,13 @@ module platformIdentity 'br/public:avm/ptn/alz/empty:0.3.1' = {
   name: take('platformIdentity-${guid(deployment().name)}', 64)
   params: {
     // Required parameters
-    managementGroupName: managementGroupNames.identity.id
+    managementGroupName: managementGroupNames.platformIdentity.id
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
-    managementGroupDisplayName: managementGroupNames.identity.displayName
+    managementGroupDisplayName: managementGroupNames.platformIdentity.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.platformIdentity
     managementGroupParentId: platform.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -253,11 +250,13 @@ module platformConnectivity 'br/public:avm/ptn/alz/empty:0.3.1' = {
   name: take('platformConnectivity-${guid(deployment().name)}', 64)
   params: {
     // Required parameters
-    managementGroupName: managementGroupNames.connectivity.id
+    managementGroupName: managementGroupNames.platformConnectivity.id
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
-    managementGroupDisplayName: managementGroupNames.connectivity.displayName
+    managementGroupDisplayName: managementGroupNames.platformConnectivity.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.platformConnectivity
     managementGroupParentId: platform.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -266,11 +265,13 @@ module platformSecurity 'br/public:avm/ptn/alz/empty:0.3.1' = {
   name: take('platformSecurity-${guid(deployment().name)}', 64)
   params: {
     // Required parameters
-    managementGroupName: managementGroupNames.security.id
+    managementGroupName: managementGroupNames.platformSecurity.id
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
-    managementGroupDisplayName: managementGroupNames.security.displayName
+    managementGroupDisplayName: managementGroupNames.platformSecurity.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.platformSecurity
     managementGroupParentId: platform.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -283,10 +284,9 @@ module landingZones 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.landingZones.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.landingZones
     managementGroupParentId: intRoot.outputs.managementGroupId
-    subscriptionsToPlaceInManagementGroup: [
-      '0b5d0018-2879-4810-b8d7-4f8dda5ce0b9'
-    ]
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -299,7 +299,9 @@ module lzCorp 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.corp.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.lzCorp
     managementGroupParentId: landingZones.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }
 
@@ -312,6 +314,8 @@ module lzOnline 'br/public:avm/ptn/alz/empty:0.3.1' = {
     // Non-required parameters
     createOrUpdateManagementGroup: createOrUpdateManagementGroup
     managementGroupDisplayName: managementGroupNames.online.displayName
+    managementGroupRoleAssignments: managementGroupRoleAssignments.lzOnline
     managementGroupParentId: landingZones.outputs.managementGroupId
+    subscriptionsToPlaceInManagementGroup: []
   }
 }

@@ -38,10 +38,10 @@ param envPrefix string
 param roleAssignments type.roleAssignmentConfigurationType?
 
 @description('Optional. Configuration for Azure Budgets.')
-param budgetConfiguration type.budgetConfigurationType?
+param budgetConfiguration type.budgetType?
 
 @description('Optional. Configuration for Action Groups.')
-param actionGroupConfiguration type.actionGroupConfigurationType?
+param actionGroupConfiguration type.actionGroupType?
 
 @description('Optional. The JSON payload for the name prefixes, if wanting to override that in the ../configuration/shared/ folder.')
 param namePrefixesPayload object = {}
@@ -66,7 +66,7 @@ var resourceNames = {
 }
 
 @description('Module: Azure Budgets - https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/consumption/budget')
-module budget 'br/public:avm/res/consumption/budget:0.3.7' = [
+module budget 'br/public:avm/res/consumption/budget:0.3.8' = [
   for (bg, index) in (budgetConfiguration.?budgets ?? []): if (!empty(budgetConfiguration) && deployBudgets) {
     name: take('budget-${guid(deployment().name)}-${index}', 64)
     scope: subscription(existingSubscriptionId)
@@ -96,7 +96,7 @@ module commonResourceGroups 'br/public:avm/res/resources/resource-group:0.4.1' =
 ]
 
 @description('Module: Action Group - https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/insights/action-group')
-module actionGroup 'br/public:avm/res/insights/action-group:0.7.0' = if (!empty(actionGroupConfiguration.?emailReceivers)) {
+module actionGroup 'br/public:avm/res/insights/action-group:0.8.0' = if (!empty(actionGroupConfiguration.?emailReceivers)) {
   name: take('actionGroup-${guid(deployment().name)}', 64)
   scope: resourceGroup(existingSubscriptionId, 'alertsRG')
   dependsOn: [
@@ -118,7 +118,7 @@ module actionGroup 'br/public:avm/res/insights/action-group:0.7.0' = if (!empty(
   }
 }
 
-module subVending 'br/public:avm/ptn/lz/sub-vending:0.3.7' = {
+module subVending 'br/public:avm/ptn/lz/sub-vending:0.4.0' = {
   name: 'subVendingDeployment'
   params: {
     deploymentScriptLocation: location

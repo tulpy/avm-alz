@@ -39,12 +39,13 @@ param deployBudgets bool = true
 @description('Optional. Configuration for Azure Budgets.')
 param budgetConfiguration type.budgetType?
 
-@description('Optional. Date timestamp.')
-param startDate string = '${utcNow('yyyy')}-${utcNow('MM')}-01T00:00:00Z'
-
 // Action Group Module Parameters
 @description('Optional. Configuration for Action Groups.')
-param actionGroupConfiguration type.actionGroupConfigurationType
+param actionGroupConfiguration type.actionGroupType?
+
+// Configuration Maintenance Module Parameters
+@description('Optional. Configuration for Configuration Maintenance.')
+param configurationMaintenanceConfiguration type.maintenanceConfigurationType?
 
 // Orchestration Variables
 var argPrefix = toLower('${shared.resPrefixes.resourceGroup}${shared.delimiter.dash}${shared.locPrefixes[location]}${shared.delimiter.dash}${lzPrefix}${shared.delimiter.dash}${envPrefix}${shared.delimiter.dash}')
@@ -221,7 +222,7 @@ module budget 'br/public:avm/res/consumption/budget:0.3.8' = [
       // Non-required parameters
       contactEmails: bg.contactEmails
       location: location
-      startDate: startDate
+      startDate: bg.startDate
       thresholdType: bg.thresholdType
       thresholds: bg.thresholds
     }
@@ -319,37 +320,15 @@ module maintenanceConfiguration 'br/public:avm/res/maintenance/maintenance-confi
     // Required parameters
     name: resourceNames.updateManagerConfiguration
     // Non-required parameters
-    extensionProperties: {
-      InGuestPatchMode: 'User'
-    }
+    extensionProperties: configurationMaintenanceConfiguration.?extensionProperties ?? {}
     installPatches: {
-      linuxParameters: {
-        classificationsToInclude: [
-          'Critical'
-          'Security'
-        ]
-        packageNameMasksToExclude: null
-        packageNameMasksToInclude: null
-      }
-      windowsParameters: {
-        classificationsToInclude: [
-          'Critical'
-          'Security'
-        ]
-        kbNumbersToExclude: null
-        kbNumbersToInclude: null
-      }
-      rebootSetting: rebootSetting
+      linuxParameters: configurationMaintenanceConfiguration.?installPatches.?linuxParameters ?? {}
+      windowsParameters: configurationMaintenanceConfiguration.?installPatches.?windowsParameters ?? {}
+      rebootSetting: configurationMaintenanceConfiguration.?installPatches.?rebootSetting ?? 'IfRequired'
     }
     location: location
-    maintenanceScope: 'InGuestPatch'
-    maintenanceWindow: {
-      duration: '03:00'
-      expirationDateTime: '9999-12-31 23:59:59'
-      recurEvery: 'Day'
-      startDateTime: '2022-12-31 13:00'
-      timeZone: 'W. Europe Standard Time'
-    }
+    maintenanceScope: configurationMaintenanceConfiguration.?maintenanceScope ?? 'InGuestPatch'
+    maintenanceWindow: configurationMaintenanceConfiguration.?maintenanceWindow ?? {}
     tags: tags
   }
 }
